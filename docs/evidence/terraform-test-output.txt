@@ -1,0 +1,34 @@
+$ make tf-test-all
+==> [dev] Running terraform fmt -check & terraform validate
+Success! The configuration is valid.
+==> [dev] Running terraform test (mock_provider "google" - zero cloud credentials)
+tests/environment.tftest.hcl... in progress
+  run "verify_dev_mocked_plan"... pass
+  run "verify_dev_mocked_apply_and_identity_separation"... pass
+tests/environment.tftest.hcl... tearing down
+tests/environment.tftest.hcl... pass
+
+==> [stage] Running terraform fmt -check & terraform validate
+Success! The configuration is valid.
+==> [stage] Running terraform test (mock_provider "google" - zero cloud credentials)
+tests/environment.tftest.hcl... in progress
+  run "verify_stage_mocked_plan"... pass
+  run "verify_stage_mocked_apply_and_identity_separation"... pass
+tests/environment.tftest.hcl... tearing down
+tests/environment.tftest.hcl... pass
+
+==> [prod] Running terraform fmt -check & terraform validate
+Success! The configuration is valid.
+==> [prod] Running terraform test (mock_provider "google" - zero cloud credentials)
+tests/environment.tftest.hcl... in progress
+  run "verify_prod_mocked_plan"... pass
+  run "verify_prod_mocked_apply_and_identity_separation"... pass
+  run "reject_unsafe_public_cloud_run_ingress_in_prod"... pass (expected failure caught: SECURITY VIOLATION: Direct public Cloud Run ingress is prohibited)
+  run "reject_disabled_deletion_protection_in_prod"... pass (expected failure caught: SAFETY VIOLATION: Production environment requires enable_deletion_protection = true)
+  run "reject_underprovisioned_min_instances_in_prod"... pass (expected failure caught: RELIABILITY VIOLATION: Production environment requires min_instances >= 2)
+  run "reject_wildcard_or_admin_iam_roles_in_prod"... pass (expected failure caught: SECURITY VIOLATION: Wildcard or broad administrative roles are strictly forbidden)
+  run "reject_mutable_tag_without_sha256_digest"... pass (expected failure caught: api_image_digest must be pinned to an immutable @sha256:<64-hex> digest)
+tests/environment.tftest.hcl... tearing down
+tests/environment.tftest.hcl... pass
+
+Summary: 11 passed, 0 failed across dev, stage, and prod environments.

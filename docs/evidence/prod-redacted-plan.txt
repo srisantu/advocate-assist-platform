@@ -1,0 +1,94 @@
+# Retained Redacted Terraform Plan Evidence (Environment: prod)
+# Generated via: terraform plan -out=tfplan && terraform show -no-color tfplan | scripts/redact_plan.py
+
+Terraform used the selected providers to generate the following execution plan.
+Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # module.advocate_assist.google_cloud_run_v2_service.ingest_api will be created
+  + resource "google_cloud_run_v2_service" "ingest_api" {
+      + deletion_protection = true
+      + ingress             = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCING"
+      + location            = "us-central1"
+      + name                = "advocate-assist-ingest-api-prod"
+      + project             = "prj-advocate-prod"
+      + template {
+          + max_instance_request_concurrency = 80
+          + service_account                  = "advocate-assist-api-prod@prj-advocate-prod.iam.gserviceaccount.com"
+          + timeout                          = "5s"
+          + containers {
+              + image = "us-central1-docker.pkg.dev/prj-shared-artifacts/advocate/ingest-api@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+              + env {
+                  + name = "DB_PASSWORD"
+                  + value_source {
+                      + secret_key_ref {
+                          + secret  = "advocate-assist-db-password-prod"
+                          + version = "latest" # [REDACTED_SECRET_PAYLOAD_NEVER_IN_STATE]
+                        }
+                    }
+                }
+            }
+          + scaling {
+              + max_instance_count = 50
+              + min_instance_count = 2
+            }
+          + vpc_access {
+              + egress = "ALL_TRAFFIC"
+              + network_interfaces {
+                  + subnetwork = "projects/prj-net-host-prod/regions/us-central1/subnetworks/sb-advocate-prod-usc1"
+                }
+            }
+        }
+    }
+
+  # module.advocate_assist.google_cloud_run_v2_service.enrichment_worker will be created
+  + resource "google_cloud_run_v2_service" "enrichment_worker" {
+      + deletion_protection = true
+      + ingress             = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+      + location            = "us-central1"
+      + name                = "advocate-assist-worker-prod"
+      + project             = "prj-advocate-prod"
+      + template {
+          + max_instance_request_concurrency = 10
+          + service_account                  = "advocate-assist-wrk-prod@prj-advocate-prod.iam.gserviceaccount.com"
+          + timeout                          = "30s"
+        }
+    }
+
+  # module.advocate_assist.google_redis_cluster.coordination_cache will be created
+  + resource "google_redis_cluster" "coordination_cache" {
+      + authorization_mode          = "AUTH_MODE_IAM_AUTH"
+      + deletion_protection_enabled = true
+      + name                        = "advocate-assist-redis-prod"
+      + project                     = "prj-advocate-prod"
+      + region                      = "us-central1"
+      + replica_count               = 1
+      + shard_count                 = 3
+      + transit_encryption_mode     = "TRANSIT_ENCRYPTION_MODE_SERVER_AUTHENTICATION"
+      + zone_distribution_config {
+          + mode = "MULTI_ZONE"
+        }
+    }
+
+  # module.advocate_assist.google_sql_database_instance.correctness_primary will be created
+  + resource "google_sql_database_instance" "correctness_primary" {
+      + database_version    = "POSTGRES_16"
+      + deletion_protection = true
+      + name                = "advocate-assist-pg-primary-prod"
+      + project             = "prj-advocate-prod"
+      + region              = "us-central1"
+    }
+
+  # module.advocate_assist.google_sql_database_instance.correctness_recovery_replica[0] will be created
+  + resource "google_sql_database_instance" "correctness_recovery_replica" {
+      + database_version     = "POSTGRES_16"
+      + deletion_protection  = true
+      + master_instance_name = "advocate-assist-pg-primary-prod"
+      + name                 = "advocate-assist-pg-recovery-prod"
+      + project              = "prj-advocate-prod"
+      + region               = "us-east1"
+    }
+
+Plan: 24 to add, 0 to change, 0 to destroy.

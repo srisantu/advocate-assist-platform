@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: advocate
+      POSTGRES_PASSWORD: local_dev_only_password
+      POSTGRES_DB: advocate_correctness
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U advocate -d advocate_correctness"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  redis-cluster-mock:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.102.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./local-demo/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "8889:8889"
+
+  demo-runner:
+    build:
+      context: .
+      dockerfile: local-demo/Dockerfile
+    environment:
+      ADVOCATE_DB_PATH: /tmp/advocate_demo.db
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis-cluster-mock:
+        condition: service_healthy
+    command: ["python3", "scripts/run_local_demo.py"]

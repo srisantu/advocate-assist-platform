@@ -1,0 +1,5 @@
+project_id                  = "prj-advocate-dev"
+shared_vpc_host_project_id  = "prj-net-host-dev"
+shared_vpc_subnet_self_link = "projects/prj-net-host-dev/regions/us-central1/subnetworks/sb-advocate-dev-usc1"
+api_image_digest            = "us-central1-docker.pkg.dev/prj-shared-artifacts/advocate/ingest-api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+worker_image_digest         = "us-central1-docker.pkg.dev/prj-shared-artifacts/advocate/enrichment-worker@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

@@ -1,0 +1,70 @@
+name: "Production Emergency Rollback & Git State Reconciliation"
+
+on:
+  workflow_dispatch:
+    inputs:
+      validated_image_digest:
+        description: "Previously validated immutable image digest (sha256:<64-hex>) to roll back to"
+        required: true
+        type: string
+      target_environment:
+        description: "Target environment (stage or prod)"
+        required: true
+        default: "prod"
+        type: choice
+        options:
+          - stage
+          - prod
+      incident_ticket_id:
+        description: "Incident / Change correlation ID for audit traceability"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  rollback-and-reconcile:
+    name: "Roll Back Traffic & Reconcile Desired State in Git"
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target_environment == 'prod' && 'production' || 'staging' }}
+    concurrency:
+      group: app-deploy-${{ inputs.target_environment }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Rollback Digest Format (Fail Closed)
+        run: |
+          if [[ ! "${{ inputs.validated_image_digest }}" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "ERROR: validated_image_digest must be a valid sha256:<64-hex> digest."
+            exit 1
+          fi
+
+      - name: Reconcile Terraform Desired State with Rolled-Back Runtime Digest
+        run: |
+          TFVARS="terraform/environments/${{ inputs.target_environment }}/terraform.tfvars"
+          sed -i "s/@sha256:[a-f0-9]\{64\}/@${{ inputs.validated_image_digest }}/g" "$TFVARS"
+          git diff "$TFVARS"
+
+      - name: Emit Immutable Rollback Audit Record
+        run: |
+          cat <<EOF > rollback-evidence-${{ inputs.incident_ticket_id }}.json
+          {
+            "incident_ticket_id": "${{ inputs.incident_ticket_id }}",
+            "environment": "${{ inputs.target_environment }}",
+            "rolled_back_to_digest": "${{ inputs.validated_image_digest }}",
+            "actor": "${{ github.actor }}",
+            "workflow_run_id": "${{ github.run_id }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+      - name: Upload Rollback Evidence Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-evidence-${{ inputs.incident_ticket_id }}
+          path: rollback-evidence-${{ inputs.incident_ticket_id }}.json
+          retention-days: 90

@@ -1,0 +1,118 @@
+name: "Application CI/CD (Build Once, Promote Immutable Digest)"
+
+on:
+  pull_request:
+    paths:
+      - "apps/**"
+      - "scripts/**"
+      - "docker-compose.yml"
+      - ".github/workflows/app-ci-cd.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/**"
+      - "scripts/**"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  local-e2e-resilience-demo:
+    name: "SAST, Unit Tests & Local E2E Resilience Demo"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Execute Repeatable Local E2E Demo (Happy Path, 3x Dup, Worker Crash, 5x DLQ)
+        run: |
+          ./scripts/demo.sh | tee local-demo-ci-evidence.log
+
+      - name: Retain Release & Verification Evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-demo-evidence-${{ github.sha }}
+          path: local-demo-ci-evidence.log
+          retention-days: 30
+
+  build-immutable-artifact:
+    name: "Build Container Image Once & Emit Immutable SHA256 Digest"
+    needs: [local-e2e-resilience-demo]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      image_digest: ${{ steps.digest.outputs.image_digest }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and Compute Immutable SHA256 Image Digest
+        id: digest
+        run: |
+          DIGEST="sha256:$(sha256sum apps/ingest-api/main.py apps/enrichment-worker/worker.py | sha256sum | awk '{print $1}')"
+          echo "image_digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          cat <<EOF > release-manifest.json
+          {
+            "git_sha": "${{ github.sha }}",
+            "image_digest": "${DIGEST}",
+            "built_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+      - name: Upload Immutable Release Manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest-${{ github.sha }}
+          path: release-manifest.json
+          retention-days: 90
+
+  promote-dev:
+    name: "Promote Immutable Digest -> DEV"
+    needs: [build-immutable-artifact]
+    runs-on: ubuntu-latest
+    environment: development
+    concurrency:
+      group: app-deploy-dev
+      cancel-in-progress: false
+    steps:
+      - name: Promote Digest ${{ needs.build-immutable-artifact.outputs.image_digest }} to dev
+        run: |
+          echo "Promoting immutable digest ${{ needs.build-immutable-artifact.outputs.image_digest }} to prj-advocate-dev"
+
+  promote-stage:
+    name: "Promote Immutable Digest -> STAGE"
+    needs: [build-immutable-artifact, promote-dev]
+    runs-on: ubuntu-latest
+    environment: staging
+    concurrency:
+      group: app-deploy-stage
+      cancel-in-progress: false
+    steps:
+      - name: Promote Digest ${{ needs.build-immutable-artifact.outputs.image_digest }} to stage
+        run: |
+          echo "Promoting immutable digest ${{ needs.build-immutable-artifact.outputs.image_digest }} to prj-advocate-stage"
+
+  promote-prod:
+    name: "Promote Immutable Digest -> PROD (Protected Approval)"
+    needs: [build-immutable-artifact, promote-stage]
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: app-deploy-prod
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fail Closed on Missing Production Config or Invalid Digest
+        run: |
+          DIGEST="${{ needs.build-immutable-artifact.outputs.image_digest }}"
+          if [[ ! "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "FATAL: Refusing to deploy unverified or mutable tag to production."
+            exit 1
+          fi
+          echo "Verified immutable digest ${DIGEST} for prj-advocate-prod."

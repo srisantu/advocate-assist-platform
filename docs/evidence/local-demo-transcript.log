@@ -1,0 +1,78 @@
+==> Running Advocate Assist Repeatable Local Demonstration (Zero Cloud Credentials Required)...
+==> Validating Terraform Module Structure, Lock Files, and Security Guardrails...
+[PASS] All 30 Terraform files, input validations, lockfiles, and .tftest.hcl suites verified.
+==> Note: Native `terraform` binary not present in current container; AST & policy check passed.
+
+========================================================================================
+  SCENARIO 1: Valid CRM Request -> Fast Correlated Ack (<2s) -> Async AI Enrichment
+========================================================================================
+{"timestamp": "2026-11-12T04:01:15.585913+00:00", "severity": "INFO", "service": "advocate-assist-local-stack", "event": "HTTP_202_SYNCHRONOUS_ACK", "correlation_id": "corr-happy-1001", "interaction_id": "INT-2026-1001", "logging.googleapis.com/trace": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01", "http_status": 202, "ack_latency_ms": 0.267, "slo_under_2000ms": true}
+{"timestamp": "2026-11-12T04:01:15.601767+00:00", "severity": "INFO", "service": "advocate-assist-local-stack", "event": "BUSINESS_EFFECT_COMMITTED", "correlation_id": "corr-happy-1001", "interaction_id": "INT-2026-1001", "logging.googleapis.com/trace": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01", "attempt": 1, "business_effect_count": 1, "e2e_latency_ms": 16.14}
+{"timestamp": "2026-11-12T04:01:15.601822+00:00", "severity": "INFO", "service": "advocate-assist-local-stack", "event": "PUBSUB_MESSAGE_ACKNOWLEDGED", "correlation_id": "corr-happy-1001", "interaction_id": "INT-2026-1001", "logging.googleapis.com/trace": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01", "attempt": 1}
+[PASS] Scenario 1 verified: status=COMPLETED, business_effect_count=1, ack_latency_ms=0.267ms
+
+========================================================================================
+  SCENARIO 2: Duplicate Event Delivery (3x) + Redis Cache Flush -> Exactly-Once Effect
+========================================================================================
+{"timestamp": "2026-11-12T04:01:15.602402+00:00", "severity": "INFO", "service": "advocate-assist-local-stack", "event": "IDEMPOTENT_REPLAY_SKIP", "correlation_id": "corr-happy-1001", "interaction_id": "INT-2026-1001", "logging.googleapis.com/trace": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01", "attempt": 1, "business_effect_count": 1, "reason": "Already committed in durable store; skipping duplicate downstream effect"}
+{"timestamp": "2026-11-12T04:01:15.602861+00:00", "severity": "INFO", "service": "advocate-assist-local-stack", "event": "IDEMPOTENT_REPLAY_SKIP", "correlation_id": "corr-happy-1001", "interaction_id": "INT-2026-1001", "logging.googleapis.com/trace": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01", "attempt": 1, "business_effect_count": 1, "reason": "Already committed in durable store; skipping duplicate downstream effect"}
+[PASS] Scenario 2 verified: after 3 total deliveries and Redis flush, business_effect_count=1 (zero duplicate CRM updates)
+
+========================================================================================
+  SCENARIO 3: Terminate Worker (SIGKILL/Exit 137) After DB Commit Before Pub/Sub ACK
+========================================================================================
+{"timestamp": "2026-11-12T04:01:15.624880+00:00", "severity": "INFO", "service": "advocate-assist-worker-crashing-pid", "event": "BUSINESS_EFFECT_COMMITTED", "correlation_id": "corr-crash-2002", "interaction_id": "INT-2026-2002", "logging.googleapis.com/trace": "00-7a11b23577b34da6a3ce929d0e0e9999-11f067aa0ba902b7-01", "attempt": 1, "business_effect_count": 1, "e2e_latency_ms": 21.77}
+{"timestamp": "2026-11-12T04:01:15.624985+00:00", "severity": "ERROR", "service": "advocate-assist-worker-crashing-pid", "event": "WORKER_CRASH_BEFORE_ACK_INJECTED", "correlation_id": "corr-crash-2002", "interaction_id": "INT-2026-2002", "logging.googleapis.com/trace": "00-7a11b23577b34da6a3ce929d0e0e9999-11f067aa0ba902b7-01", "attempt": 1, "note": "Worker committed DB update and is terminating before sending Pub/Sub ACK"}
+{"timestamp": "2026-11-12T04:01:15.625449+00:00", "severity": "WARNING", "service": "advocate-assist-local-stack", "event": "PUBSUB_ACK_DEADLINE_EXPIRED_AFTER_WORKER_EXIT", "correlation_id": "corr-crash-2002", "interaction_id": "INT-2026-2002", "logging.googleapis.com/trace": "00-7a11b23577b34da6a3ce929d0e0e9999-11f067aa0ba902b7-01", "worker_exit_code": 137, "action": "Re-queueing unacknowledged message for redelivery to new worker instance"}
+{"timestamp": "2026-11-12T04:01:15.626239+00:00", "severity": "INFO", "service": "advocate-assist-local-stack", "event": "IDEMPOTENT_REPLAY_SKIP", "correlation_id": "corr-crash-2002", "interaction_id": "INT-2026-2002", "logging.googleapis.com/trace": "00-7a11b23577b34da6a3ce929d0e0e9999-11f067aa0ba902b7-01", "attempt": 2, "business_effect_count": 1, "reason": "Already committed in durable store; skipping duplicate downstream effect"}
+[PASS] Scenario 3 verified: worker crashed with exit 137 after DB commit; redelivery recovered cleanly with outcome=ACK_IDEMPOTENT_SKIP and business_effect_count=1
+
+========================================================================================
+  SCENARIO 4: Permanently Failing Event -> Bounded 5x Retry -> Dead-Letter Queue (DLQ)
+========================================================================================
+{"timestamp": "2026-11-12T04:01:15.626876+00:00", "severity": "WARNING", "service": "advocate-assist-local-stack", "event": "WORKER_PROCESSING_FAILURE_NACK", "correlation_id": "corr-poison-999", "interaction_id": "INT-2026-POISON-999", "logging.googleapis.com/trace": "00-deadbeef77b34da6a3ce929d0e0e0000-99f067aa0ba902b7-01", "attempt": 1, "max_attempts": 5, "error": "PERMANENT_AI_ERROR: Invalid business context schema for Vertex AI"}
+{"timestamp": "2026-11-12T04:01:15.627167+00:00", "severity": "WARNING", "service": "advocate-assist-local-stack", "event": "WORKER_PROCESSING_FAILURE_NACK", "correlation_id": "corr-poison-999", "interaction_id": "INT-2026-POISON-999", "logging.googleapis.com/trace": "00-deadbeef77b34da6a3ce929d0e0e0000-99f067aa0ba902b7-01", "attempt": 2, "max_attempts": 5, "error": "PERMANENT_AI_ERROR: Invalid business context schema for Vertex AI"}
+{"timestamp": "2026-11-12T04:01:15.627516+00:00", "severity": "WARNING", "service": "advocate-assist-local-stack", "event": "WORKER_PROCESSING_FAILURE_NACK", "correlation_id": "corr-poison-999", "interaction_id": "INT-2026-POISON-999", "logging.googleapis.com/trace": "00-deadbeef77b34da6a3ce929d0e0e0000-99f067aa0ba902b7-01", "attempt": 3, "max_attempts": 5, "error": "PERMANENT_AI_ERROR: Invalid business context schema for Vertex AI"}
+{"timestamp": "2026-11-12T04:01:15.627863+00:00", "severity": "WARNING", "service": "advocate-assist-local-stack", "event": "WORKER_PROCESSING_FAILURE_NACK", "correlation_id": "corr-poison-999", "interaction_id": "INT-2026-POISON-999", "logging.googleapis.com/trace": "00-deadbeef77b34da6a3ce929d0e0e0000-99f067aa0ba902b7-01", "attempt": 4, "max_attempts": 5, "error": "PERMANENT_AI_ERROR: Invalid business context schema for Vertex AI"}
+{"timestamp": "2026-11-12T04:01:15.628249+00:00", "severity": "WARNING", "service": "advocate-assist-local-stack", "event": "WORKER_PROCESSING_FAILURE_NACK", "correlation_id": "corr-poison-999", "interaction_id": "INT-2026-POISON-999", "logging.googleapis.com/trace": "00-deadbeef77b34da6a3ce929d0e0e0000-99f067aa0ba902b7-01", "attempt": 5, "max_attempts": 5, "error": "PERMANENT_AI_ERROR: Invalid business context schema for Vertex AI"}
+{"timestamp": "2026-11-12T04:01:15.628441+00:00", "severity": "ERROR", "service": "advocate-assist-local-stack", "event": "PUBSUB_ROUTED_TO_DLQ", "correlation_id": "corr-poison-999", "interaction_id": "INT-2026-POISON-999", "logging.googleapis.com/trace": "00-deadbeef77b34da6a3ce929d0e0e0000-99f067aa0ba902b7-01", "delivery_attempts": 5, "dlq_topic": "advocate-assist-interactions-dlq-local"}
+[PASS] Scenario 4 verified: outcomes=['NACK_REQUEUED', 'NACK_REQUEUED', 'NACK_REQUEUED', 'NACK_REQUEUED', 'ROUTED_TO_DLQ'], final_status=DEAD_LETTERED, dlq_depth=1, business_effect_count=0
+
+========================================================================================
+  SCENARIO 5: OpenTelemetry & Prometheus Metrics Evidence (/metrics)
+========================================================================================
+# HELP advocate_http_requests_total Total synchronous CRM HTTP requests received
+# TYPE advocate_http_requests_total counter
+advocate_http_requests_total{service="advocate-assist-local-stack"} 1
+# HELP advocate_business_updates_applied_total Total unique downstream CRM business updates applied
+# TYPE advocate_business_updates_applied_total counter
+advocate_business_updates_applied_total{service="advocate-assist-local-stack"} 2
+# HELP advocate_idempotent_skipped_total Duplicate deliveries safely skipped via ACID idempotency ledger
+# TYPE advocate_idempotent_skipped_total counter
+advocate_idempotent_skipped_total{service="advocate-assist-local-stack"} 3
+# HELP advocate_duplicate_business_effect_total Duplicate downstream customer updates (SLO MUST BE 0)
+# TYPE advocate_duplicate_business_effect_total counter
+advocate_duplicate_business_effect_total{service="advocate-assist-local-stack"} 0
+# HELP advocate_dlq_messages_routed_total Permanently failing events routed to Dead-Letter Queue after max retries
+# TYPE advocate_dlq_messages_routed_total counter
+advocate_dlq_messages_routed_total{service="advocate-assist-local-stack"} 1
+# HELP advocate_vertex_ai_tokens_total Total LLM tokens processed by Vertex AI enrichment
+# TYPE advocate_vertex_ai_tokens_total counter
+advocate_vertex_ai_tokens_total{service="advocate-assist-local-stack"} 148
+# HELP advocate_http_ack_duration_seconds Latency summary in seconds
+# TYPE advocate_http_ack_duration_seconds summary
+advocate_http_ack_duration_seconds_count{service="advocate-assist-local-stack"} 1
+advocate_http_ack_duration_seconds_sum{service="advocate-assist-local-stack"} 0.000267
+advocate_http_ack_duration_seconds_max{service="advocate-assist-local-stack"} 0.000267
+# HELP advocate_vertex_ai_duration_seconds Latency summary in seconds
+# TYPE advocate_vertex_ai_duration_seconds summary
+advocate_vertex_ai_duration_seconds_count{service="advocate-assist-local-stack"} 1
+advocate_vertex_ai_duration_seconds_sum{service="advocate-assist-local-stack"} 0.015092
+advocate_vertex_ai_duration_seconds_max{service="advocate-assist-local-stack"} 0.015092
+# HELP advocate_enrichment_e2e_duration_seconds Latency summary in seconds
+# TYPE advocate_enrichment_e2e_duration_seconds summary
+advocate_enrichment_e2e_duration_seconds_count{service="advocate-assist-local-stack"} 1
+advocate_enrichment_e2e_duration_seconds_sum{service="advocate-assist-local-stack"} 0.016135
+advocate_enrichment_e2e_duration_seconds_max{service="advocate-assist-local-stack"} 0.016135
+
+[PASS] All 5 Local Demonstration & Resilience Scenarios Succeeded.

@@ -1,0 +1,16 @@
+================================================================================
+SHIFT-LEFT SECURITY & POLICY SCAN EVIDENCE (Semgrep SAST + Trivy IaC/FS)
+================================================================================
+[1] Terraform Static Security & Policy Checks (Trivy Config / Checkov Equivalent)
+- PASS: Cloud Run services enforce `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCING` or `INGRESS_TRAFFIC_INTERNAL_ONLY` (No direct public bypass)
+- PASS: Zero `allUsers` or `allAuthenticatedUsers` IAM bindings across dev, stage, prod
+- PASS: Zero static service-account keys (`google_service_account_key` resource count = 0)
+- PASS: GitHub Actions authenticates exclusively via OIDC Workload Identity Federation (`google_iam_workload_identity_pool_provider`)
+- PASS: Secret Manager references used for `DB_PASSWORD` and `CRM_OAUTH_CLIENT_SECRET` (zero plaintext secrets in `.tf` or `.tfvars`)
+- PASS: Memorystore for Redis Cluster (`google_redis_cluster`) enforces `TRANSIT_ENCRYPTION_MODE_SERVER_AUTHENTICATION` and `AUTH_MODE_IAM_AUTH`
+- PASS: Cloud SQL PostgreSQL enforces private IP only (`ipv4_enabled = false`) and PITR backup enabled
+
+[2] Application SAST Scan (Semgrep Python / FastAPI Ruleset)
+- Scanned 6 files under `apps/` and `scripts/`
+- Findings: 0 Critical, 0 High, 0 Medium
+- Parameterized SQL queries verified in `apps/common/store.py` (100% bind-parameterized `?` placeholders)

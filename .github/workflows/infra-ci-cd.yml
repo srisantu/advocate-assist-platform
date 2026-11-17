@@ -51,7 +51,7 @@ jobs:
         run: terraform test -verbose | tee tf-test-${{ matrix.environment }}.log
 
       - name: Run Trivy IaC Misconfiguration Scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.363636363636363636363636363636363636363636363636363636363636363636363636.0
         with:
           scan-type: "config"
           scan-ref: "terraform/"

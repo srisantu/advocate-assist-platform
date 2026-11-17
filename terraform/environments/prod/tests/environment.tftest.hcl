@@ -21,7 +21,7 @@ run "verify_prod_mocked_plan" {
   }
 
   assert {
-    condition     = output.cloud_run_ingress == "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCING"
+    condition     = output.cloud_run_ingress == "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
     error_message = "Cloud Run ingress must prevent direct public bypass."
   }
 }
@@ -48,7 +48,7 @@ run "reject_unsafe_public_cloud_run_ingress_in_prod" {
   }
 
   expect_failures = [
-    module.advocate_assist.var.cloud_run_ingress,
+    var.cloud_run_ingress,
   ]
 }
 
@@ -60,7 +60,7 @@ run "reject_disabled_deletion_protection_in_prod" {
   }
 
   expect_failures = [
-    module.advocate_assist.var.enable_deletion_protection,
+    var.enable_deletion_protection,
   ]
 }
 
@@ -72,7 +72,7 @@ run "reject_underprovisioned_min_instances_in_prod" {
   }
 
   expect_failures = [
-    module.advocate_assist.var.min_instances,
+    var.min_instances,
   ]
 }
 
@@ -84,7 +84,7 @@ run "reject_wildcard_or_admin_iam_roles_in_prod" {
   }
 
   expect_failures = [
-    module.advocate_assist.var.additional_iam_roles,
+    var.additional_iam_roles,
   ]
 }
 
@@ -96,7 +96,6 @@ run "reject_mutable_tag_without_sha256_digest" {
   }
 
   expect_failures = [
-    module.advocate_assist.var.api_image_digest,
+    var.api_image_digest,
   ]
 }
-

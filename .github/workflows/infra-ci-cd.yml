@@ -1,6 +1,7 @@
 name: "Infrastructure CI/CD (Terraform + OIDC WIF)"
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "terraform/**"
@@ -39,7 +40,7 @@ jobs:
 
       - name: Terraform Init (Backend Disabled for Credential-Free Validation)
         working-directory: terraform/environments/${{ matrix.environment }}
-        run: terraform init -backend=false
+        run: terraform init -backend=false -upgrade
 
       - name: Terraform Validate
         working-directory: terraform/environments/${{ matrix.environment }}

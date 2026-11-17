@@ -2,7 +2,7 @@
 SHIFT-LEFT SECURITY & POLICY SCAN EVIDENCE (Semgrep SAST + Trivy IaC/FS)
 ================================================================================
 [1] Terraform Static Security & Policy Checks (Trivy Config / Checkov Equivalent)
-- PASS: Cloud Run services enforce `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCING` or `INGRESS_TRAFFIC_INTERNAL_ONLY` (No direct public bypass)
+- PASS: Cloud Run services enforce `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` or `INGRESS_TRAFFIC_INTERNAL_ONLY` (No direct public bypass)
 - PASS: Zero `allUsers` or `allAuthenticatedUsers` IAM bindings across dev, stage, prod
 - PASS: Zero static service-account keys (`google_service_account_key` resource count = 0)
 - PASS: GitHub Actions authenticates exclusively via OIDC Workload Identity Federation (`google_iam_workload_identity_pool_provider`)

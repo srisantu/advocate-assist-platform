@@ -10,7 +10,7 @@ Terraform will perform the following actions:
   # module.advocate_assist.google_cloud_run_v2_service.ingest_api will be created
   + resource "google_cloud_run_v2_service" "ingest_api" {
       + deletion_protection = true
-      + ingress             = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCING"
+      + ingress             = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
       + location            = "us-central1"
       + name                = "advocate-assist-ingest-api-prod"
       + project             = "prj-advocate-prod"

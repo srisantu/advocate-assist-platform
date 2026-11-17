@@ -10,12 +10,12 @@ output "project_id" {
 
 output "ingest_api_service_account_email" {
   description = "Dedicated service account email for Ingest API."
-  value       = google_service_account.ingest_api.email
+  value       = "${google_service_account.ingest_api.account_id}@${var.project_id}.iam.gserviceaccount.com"
 }
 
 output "enrichment_worker_service_account_email" {
   description = "Dedicated service account email for Enrichment Worker."
-  value       = google_service_account.enrichment_worker.email
+  value       = "${google_service_account.enrichment_worker.account_id}@${var.project_id}.iam.gserviceaccount.com"
 }
 
 output "github_wif_provider_name" {

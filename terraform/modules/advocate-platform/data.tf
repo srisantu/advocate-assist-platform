@@ -2,14 +2,16 @@
 # Tier 1 Fast In-Flight Lock & Cache: Memorystore for Redis Cluster (99.99% SLA)
 # -----------------------------------------------------------------------------
 resource "google_redis_cluster" "coordination_cache" {
-  project                    = var.project_id
-  name                       = "${var.service_name}-redis-${var.environment}"
-  shard_count                = 3
-  region                     = var.primary_region
-  replica_count              = var.redis_replica_count
-  transit_encryption_mode    = "TRANSIT_ENCRYPTION_MODE_SERVER_AUTHENTICATION"
-  authorization_mode         = "AUTH_MODE_IAM_AUTH"
-  deletion_protection_enabled = var.enable_deletion_protection
+  project                 = var.project_id
+  name                    = "${var.service_name}-redis-${var.environment}"
+  shard_count             = 3
+  region                  = var.primary_region
+  replica_count           = var.redis_replica_count
+  transit_encryption_mode = "TRANSIT_ENCRYPTION_MODE_SERVER_AUTHENTICATION"
+  authorization_mode      = "AUTH_MODE_IAM_AUTH"
+  psc_configs {
+    network = "projects/${var.shared_vpc_host_project_id}/global/networks/vpc-shared-${var.environment}"
+  }
 
   zone_distribution_config {
     mode = "MULTI_ZONE"

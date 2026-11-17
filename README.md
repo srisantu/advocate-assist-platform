@@ -23,7 +23,7 @@ During a live contact-center interaction, the enterprise CRM sends an interactio
 | SERVICE PROJECT (prj-advocate-{env} | Attached via Subnet-Scoped roles/compute.networkUser)       |
 |                                                                                                   |
 |  1. [Cloud Run: advocate-assist-ingest-api-{env}] (SA: advocate-assist-api-{env})                 |
-|     - Ingress: INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCING (blocks direct public internet bypass)     |
+|     - Ingress: INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER (blocks direct public internet bypass)     |
 |     - Validates M2M token, writes initial ACCEPTED state, publishes to Pub/Sub with W3C trace     |
 |     - Returns HTTP 202 Accepted (< 2s SLO)                                                        |
 |                                         |                                                         |
@@ -45,7 +45,7 @@ During a live contact-center interaction, the enterprise CRM sends an interactio
 
 ### Key Architectural Decisions (See `docs/adr/` for Full ADRs)
 
-* [**ADR-001: Hub-and-Spoke Shared VPC, Private Service Connect & Cloud Run Boundary**](docs/adr/ADR-001-hub-and-spoke-shared-vpc-psc-and-cloud-run.md)**:** Explains how Cloud Run services run in isolated service projects (`prj-advocate-{env}`), consume Shared VPC subnets via least-privilege `roles/compute.networkUser`, block direct edge bypass via `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCING`, and reach private downstream CRM and Vertex AI endpoints via Private Service Connect (PSC) forwarding rules and private Cloud DNS (`crm-callback.internal.advocate.local`).
+* [**ADR-001: Hub-and-Spoke Shared VPC, Private Service Connect & Cloud Run Boundary**](docs/adr/ADR-001-hub-and-spoke-shared-vpc-psc-and-cloud-run.md)**:** Explains how Cloud Run services run in isolated service projects (`prj-advocate-{env}`), consume Shared VPC subnets via least-privilege `roles/compute.networkUser`, block direct edge bypass via `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER`, and reach private downstream CRM and Vertex AI endpoints via Private Service Connect (PSC) forwarding rules and private Cloud DNS (`crm-callback.internal.advocate.local`).
 
 * [**ADR-002: Memorystore for Redis Cluster Paired with ACID PostgreSQL Correctness Store**](docs/adr/ADR-002-memorystore-redis-cluster-and-acid-idempotency-store.md)**:** Explains why **Memorystore for Redis Cluster** (`google_redis_cluster`, multi-zone per-shard failover, 99.99% SLA) is used strictly for fast in-flight coordination locking (`SET NX EX`) while **Cloud SQL for PostgreSQL** (`UNIQUE(interaction_id)`) serves as the durable transactional correctness store so cache evictions, Pub/Sub redeliveries, or worker crashes before `ACK` never produce duplicate customer updates.
 

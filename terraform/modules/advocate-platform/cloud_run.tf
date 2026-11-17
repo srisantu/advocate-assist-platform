@@ -2,11 +2,10 @@
 # Cloud Run Services (Primary Region + Warm Production Standby in Recovery Region)
 # -----------------------------------------------------------------------------
 resource "google_cloud_run_v2_service" "ingest_api" {
-  project             = var.project_id
-  name                = "${var.service_name}-ingest-api-${var.environment}"
-  location            = var.primary_region
-  ingress             = var.cloud_run_ingress
-  deletion_protection = var.enable_deletion_protection
+  project  = var.project_id
+  name     = "${var.service_name}-ingest-api-${var.environment}"
+  location = var.primary_region
+  ingress  = var.cloud_run_ingress
 
   template {
     service_account                  = google_service_account.ingest_api.email
@@ -51,14 +50,39 @@ resource "google_cloud_run_v2_service" "ingest_api" {
       }
     }
   }
+
+  lifecycle {
+    precondition {
+      condition     = var.cloud_run_ingress == "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" || var.cloud_run_ingress == "INGRESS_TRAFFIC_INTERNAL_ONLY"
+      error_message = "SECURITY VIOLATION: Direct public Cloud Run ingress (INGRESS_TRAFFIC_ALL) is prohibited."
+    }
+    precondition {
+      condition     = var.environment != "prod" || var.enable_deletion_protection == true
+      error_message = "SAFETY VIOLATION: Production environment requires enable_deletion_protection = true."
+    }
+    precondition {
+      condition     = var.environment != "prod" || var.min_instances >= 2
+      error_message = "RELIABILITY VIOLATION: Production environment requires min_instances >= 2."
+    }
+    precondition {
+      condition = alltrue([
+        for r in var.additional_iam_roles :
+        !contains(["roles/owner", "roles/editor", "roles/iam.securityAdmin", "roles/compute.networkAdmin", "*"], r)
+      ])
+      error_message = "SECURITY VIOLATION: Wildcard or broad administrative roles are strictly forbidden."
+    }
+    precondition {
+      condition     = can(regex("@sha256:[a-f0-9]{64}$", var.api_image_digest))
+      error_message = "IMMUTABILITY VIOLATION: api_image_digest must be pinned to an immutable @sha256:<64-hex> digest."
+    }
+  }
 }
 
 resource "google_cloud_run_v2_service" "enrichment_worker" {
-  project             = var.project_id
-  name                = "${var.service_name}-worker-${var.environment}"
-  location            = var.primary_region
-  ingress             = "INGRESS_TRAFFIC_INTERNAL_ONLY"
-  deletion_protection = var.enable_deletion_protection
+  project  = var.project_id
+  name     = "${var.service_name}-worker-${var.environment}"
+  location = var.primary_region
+  ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
 
   template {
     service_account                  = google_service_account.enrichment_worker.email
@@ -124,12 +148,11 @@ resource "google_cloud_run_v2_service" "enrichment_worker" {
 
 # Warm Active-Passive Recovery Region Cloud Run Services for Production
 resource "google_cloud_run_v2_service" "ingest_api_recovery" {
-  count               = var.environment == "prod" ? 1 : 0
-  project             = var.project_id
-  name                = "${var.service_name}-ingest-api-dr-${var.environment}"
-  location            = var.recovery_region
-  ingress             = var.cloud_run_ingress
-  deletion_protection = var.enable_deletion_protection
+  count    = var.environment == "prod" ? 1 : 0
+  project  = var.project_id
+  name     = "${var.service_name}-ingest-api-dr-${var.environment}"
+  location = var.recovery_region
+  ingress  = var.cloud_run_ingress
 
   template {
     service_account = google_service_account.ingest_api.email

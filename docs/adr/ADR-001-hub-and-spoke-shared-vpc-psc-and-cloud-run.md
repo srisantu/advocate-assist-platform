@@ -15,7 +15,7 @@ In our broader enterprise footprint, we run multi-tenant GKE clusters attached t
 
 ## Decision
 1. **Cloud Run with Internal + Load Balancer Ingress Only:**
-   - Both `ingest-api` and `enrichment-worker` run on Cloud Run v2 (`google_cloud_run_v2_service`) with `ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCING"`.
+   - Both `ingest-api` and `enrichment-worker` run on Cloud Run v2 (`google_cloud_run_v2_service`) with `ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"`.
    - The `ingest-api` is exposed externally **exclusively** via a Global External Application Load Balancer (`EXTERNAL_MANAGED`) backed by a Serverless Network Endpoint Group (NEG) and protected by a Cloud Armor security policy (OWASP Top 10 preconfigured rules + per-consumer rate limiting + mTLS/OAuth JWT validation).
    - Direct `*.run.app` default URLs are disabled (`default_uri_disabled = true`), preventing edge bypass.
 2. **Hub-and-Spoke Shared VPC Delegation (`roles/compute.networkUser`):**

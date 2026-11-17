@@ -25,7 +25,7 @@ variable "worker_image_digest" {
 
 variable "cloud_run_ingress" {
   type    = string
-  default = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCING"
+  default = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 }
 
 variable "min_instances" {

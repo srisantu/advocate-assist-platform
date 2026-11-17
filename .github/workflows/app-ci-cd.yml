@@ -1,6 +1,7 @@
 name: "Application CI/CD (Build Once, Promote Immutable Digest)"
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "apps/**"

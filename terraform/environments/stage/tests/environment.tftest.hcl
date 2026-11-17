@@ -21,7 +21,7 @@ run "verify_stage_mocked_plan" {
   }
 
   assert {
-    condition     = output.cloud_run_ingress == "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCING"
+    condition     = output.cloud_run_ingress == "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
     error_message = "Cloud Run ingress must prevent direct public bypass."
   }
 }

@@ -13,7 +13,7 @@ module "advocate_assist" {
   worker_image_digest        = var.worker_image_digest
   cloud_run_ingress          = var.cloud_run_ingress
   min_instances              = var.min_instances
-  max_instances              = 50
+  max_instances              = 80
   enable_deletion_protection = var.enable_deletion_protection
   redis_replica_count        = var.redis_replica_count
   additional_iam_roles       = var.additional_iam_roles

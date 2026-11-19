@@ -131,7 +131,7 @@ variable "min_instances" {
 variable "max_instances" {
   description = "Maximum Cloud Run instances per service."
   type        = number
-  default     = 20
+  default     = 200
 }
 
 variable "enable_deletion_protection" {
